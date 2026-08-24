@@ -1,20 +1,125 @@
 import * as grpc from '@grpc/grpc-js';
 import * as protoLoader from '@grpc/proto-loader';
 import path from 'path';
+import fs from 'fs';
+import os from 'os';
 
-// Load protobuf definition
-const PROTO_PATH = path.resolve(process.cwd(), 'proto/riva_tts.proto');
-const packageDefinition = protoLoader.loadSync(PROTO_PATH, {
-  keepCase: true,
-  longs: String,
-  enums: String,
-  defaults: true,
-  oneofs: true,
-  includeDirs: [path.resolve(process.cwd(), 'proto')],
-});
+// Embedded protobuf definitions to guarantee zero-failure loading on Vercel serverless functions
+const RIVA_AUDIO_PROTO_CONTENT = `syntax = "proto3";
 
-const rivaProto: any = grpc.loadPackageDefinition(packageDefinition);
-const ttsService = rivaProto.nvidia.riva.tts.RivaSpeechSynthesis;
+package nvidia.riva.audio;
+
+enum AudioEncoding {
+  ENCODING_UNSPECIFIED = 0;
+  LINEAR_PCM = 1;
+  FLAC = 2;
+  MULAW = 3;
+  ALAW = 4;
+  OGGOPUS = 5;
+}
+`;
+
+const RIVA_TTS_PROTO_CONTENT = `syntax = "proto3";
+
+package nvidia.riva.tts;
+
+import "riva_audio.proto";
+
+message ZeroShotData {
+  bytes audio_prompt = 1;
+  int32 sample_rate_hz = 2;
+  nvidia.riva.audio.AudioEncoding encoding = 3;
+  int32 audio_prompt_sample_rate_hz = 4;
+  nvidia.riva.audio.AudioEncoding audio_prompt_encoding = 5;
+  int32 bit_depth = 6;
+  int32 audio_prompt_bit_depth = 7;
+}
+
+message SynthesizeSpeechRequest {
+  string text = 1;
+  string language_code = 2;
+  nvidia.riva.audio.AudioEncoding encoding = 3;
+  int32 sample_rate_hz = 4;
+  string voice_name = 5;
+  string id = 6;
+  ZeroShotData zero_shot_data = 7;
+  map<string, string> custom_configuration = 8;
+}
+
+message SynthesizeSpeechResponseMetadata {
+  string text = 1;
+  string processed_text = 2;
+  repeated float predicted_durations = 3;
+  repeated string d_tokens = 4;
+  repeated float kld = 5;
+  repeated string p_tokens = 6;
+}
+
+message SynthesizeSpeechResponse {
+  bytes audio = 1;
+  SynthesizeSpeechResponseMetadata meta = 2;
+  string id = 3;
+}
+
+message RivaSynthesisConfigRequest {
+  string model_name = 1;
+}
+
+message RivaSynthesisConfigResponse {
+  message ModelConfig {
+    string model_name = 1;
+    repeated string parameters = 2;
+  }
+  repeated ModelConfig model_configs = 1;
+}
+
+service RivaSpeechSynthesis {
+  rpc Synthesize(SynthesizeSpeechRequest) returns (SynthesizeSpeechResponse);
+  rpc SynthesizeOnline(SynthesizeSpeechRequest) returns (stream SynthesizeSpeechResponse);
+  rpc GetRivaSynthesisConfig(RivaSynthesisConfigRequest) returns (RivaSynthesisConfigResponse);
+}
+`;
+
+function getProtoService(): any {
+  // Check if proto file exists in current working directory or relative directories
+  const candidateDirs = [
+    path.resolve(process.cwd(), 'proto'),
+    path.resolve(__dirname, '../proto'),
+    path.resolve(__dirname, '../../proto'),
+    path.resolve(__dirname, 'proto'),
+  ];
+
+  let protoDir = candidateDirs.find((dir) => fs.existsSync(path.join(dir, 'riva_tts.proto')));
+
+  // If not found (e.g. running in Vercel lambda /var/task), dynamically write to /tmp
+  if (!protoDir) {
+    const tmpProtoDir = path.join(os.tmpdir(), 'chatterbox_proto');
+    try {
+      if (!fs.existsSync(tmpProtoDir)) {
+        fs.mkdirSync(tmpProtoDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(tmpProtoDir, 'riva_audio.proto'), RIVA_AUDIO_PROTO_CONTENT, 'utf8');
+      fs.writeFileSync(path.join(tmpProtoDir, 'riva_tts.proto'), RIVA_TTS_PROTO_CONTENT, 'utf8');
+      protoDir = tmpProtoDir;
+    } catch (e) {
+      console.warn('Could not write fallback proto to tmp dir, trying candidate paths:', e);
+      protoDir = candidateDirs[0];
+    }
+  }
+
+  const protoFile = path.join(protoDir, 'riva_tts.proto');
+  const packageDefinition = protoLoader.loadSync(protoFile, {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true,
+    includeDirs: [protoDir],
+  });
+
+  const rivaProto: any = grpc.loadPackageDefinition(packageDefinition);
+  return rivaProto.nvidia.riva.tts.RivaSpeechSynthesis;
+}
 
 const DEFAULT_API_KEY = process.env.NVIDIA_API_KEY || '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';
 const FUNCTION_ID = 'ddacc747-1269-4fab-bfd9-8f593dead106';
@@ -25,6 +130,7 @@ let cachedClient: any = null;
 
 function getClient() {
   if (!cachedClient) {
+    const ttsService = getProtoService();
     const sslCreds = grpc.credentials.createSsl();
     cachedClient = new ttsService(SERVER, sslCreds, {
       'grpc.max_receive_message_length': 64 * 1024 * 1024,

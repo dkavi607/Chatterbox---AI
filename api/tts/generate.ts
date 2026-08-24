@@ -23,6 +23,21 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        body = {};
+      }
+    } else if (Buffer.isBuffer(body)) {
+      try {
+        body = JSON.parse(body.toString('utf-8'));
+      } catch (e) {
+        body = {};
+      }
+    }
+
     const {
       text,
       language = 'en-US',
@@ -33,7 +48,7 @@ export default async function handler(req: any, res: any) {
       repetitionPenalty = 2.0,
       apiKey,
       format = 'json',
-    } = req.body || {};
+    } = body || {};
 
     if (!text || typeof text !== 'string' || text.trim().length === 0) {
       return res.status(400).json({ error: 'Text prompt is required.' });
