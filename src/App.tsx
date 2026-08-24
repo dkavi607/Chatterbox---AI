@@ -33,7 +33,10 @@ export default function App() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [customApiKey, setCustomApiKey] = useState<string>('');
 
-  // Load history & API Key from localStorage
+  // API Connection status
+  const [apiStatus, setApiStatus] = useState<'connected' | 'checking' | 'error'>('checking');
+
+  // Load history & API Key from localStorage & Check API health
   useEffect(() => {
     try {
       const savedHistory = localStorage.getItem('chatterbox_tts_history');
@@ -47,6 +50,24 @@ export default function App() {
     } catch (e) {
       console.warn('Failed to load local history:', e);
     }
+
+    // Health check verification
+    fetch('/api/tts/health')
+      .then(async (res) => {
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          if (data.status === 'ok') {
+            setApiStatus('connected');
+            return;
+          }
+        }
+        setApiStatus('error');
+      })
+      .catch((err) => {
+        console.warn('API health check error:', err);
+        setApiStatus('error');
+      });
   }, []);
 
   const saveHistoryToStorage = (newHistory: TTSGenerationResult[]) => {
@@ -78,6 +99,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify({
           text: textToSynthesize,
@@ -91,11 +113,26 @@ export default function App() {
         }),
       });
 
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!contentType.includes('application/json')) {
+        const rawText = await response.text();
+        console.error('Non-JSON server response:', rawText);
+        if (response.status === 404 || rawText.includes('cannot be found') || rawText.includes('<!DOCTYPE')) {
+          throw new Error(
+            'API endpoint (/api/tts/generate) returned 404 HTML. When deploying to Vercel, ensure Vercel Functions are enabled and the NVIDIA_API_KEY environment variable is configured in Vercel settings.'
+          );
+        }
+        throw new Error(`Server returned status ${response.status}: ${rawText.slice(0, 120)}`);
+      }
+
       const data = await response.json();
 
       if (!response.ok || !data.success) {
         throw new Error(data.error || 'Speech synthesis failed. Please try again.');
       }
+
+      setApiStatus('connected');
 
       const result: TTSGenerationResult = {
         id: data.id,
@@ -119,7 +156,7 @@ export default function App() {
       saveHistoryToStorage(updatedHistory);
     } catch (err: any) {
       console.error('Synthesis error:', err);
-      setErrorMsg(err.message || 'Network error while contacting NVIDIA TTS server.');
+      setErrorMsg(err.message || 'Network error while contacting TTS server.');
     } finally {
       setIsGenerating(false);
     }
@@ -182,6 +219,7 @@ export default function App() {
       <Header
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         isGenerating={isGenerating}
+        apiStatus={apiStatus}
       />
 
       {/* Main Container */}

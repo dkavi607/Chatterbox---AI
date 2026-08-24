@@ -12,8 +12,11 @@ export const MultilingualComparisonView: React.FC<MultilingualComparisonViewProp
 }) => {
   const [inputText, setInputText] = useState('Hello! I can speak twenty-three languages naturally with artificial intelligence.');
 
-  // Top flagship languages for quick multilingual preview
-  const featuredLangs = SUPPORTED_LANGUAGES.slice(0, 8);
+  // Top flagship languages for quick multilingual preview (including Sri Lankan Sinhala)
+  const featuredLangs = [
+    SUPPORTED_LANGUAGES.find((l) => l.code === 'si-LK') || SUPPORTED_LANGUAGES[0],
+    ...SUPPORTED_LANGUAGES.filter((l) => l.code !== 'si-LK').slice(0, 7),
+  ];
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">

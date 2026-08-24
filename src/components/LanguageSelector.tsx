@@ -18,7 +18,7 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeRegion, setActiveRegion] = useState<string>('All');
 
-  const regions = ['All', 'Europe', 'Asia Pacific', 'Americas', 'Middle East', 'Nordics', 'Africa'];
+  const regions = ['All', 'South Asia', 'Asia Pacific', 'Europe', 'Americas', 'Middle East', 'Nordics', 'Africa'];
 
   const filteredLanguages = useMemo(() => {
     return SUPPORTED_LANGUAGES.filter((lang) => {
@@ -32,7 +32,10 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
         return matchesSearch && (lang.region === 'North America' || lang.region === 'Latin America');
       }
       if (activeRegion === 'Middle East') {
-        return matchesSearch && (lang.region.includes('Middle East') || lang.region.includes('South Asia'));
+        return matchesSearch && lang.region.includes('Middle East');
+      }
+      if (activeRegion === 'South Asia') {
+        return matchesSearch && lang.region.includes('South Asia');
       }
       return matchesSearch && lang.region.includes(activeRegion);
     });

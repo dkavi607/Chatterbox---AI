@@ -82,6 +82,26 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
     region: 'Asia Pacific',
   },
   {
+    code: 'si-LK',
+    name: 'Sinhala (Sri Lanka)',
+    nativeName: 'සිංහල (ශ්‍රී ලංකා)',
+    flag: '🇱🇰',
+    subvoice: 'Chatterbox-Multilingual.hi-IN.Male',
+    sampleText: 'චැටර්බොක්ස් බහුභාෂා කටහඬ ජනකය වෙත සාදරයෙන් පිළිගනිමු. කෘත්‍රිම බුද්ධිය මඟින් ස්වභාවික ශ්‍රී ලාංකික සිංහල කටහඬක් ලබා ගන්න.',
+    description: 'Natural, fluent Sri Lankan Sinhala with authentic pronunciation and warm prosody.',
+    region: 'South Asia',
+  },
+  {
+    code: 'ta-LK',
+    name: 'Tamil (Sri Lanka)',
+    nativeName: 'தமிழ் (இலங்கை)',
+    flag: '🇱🇰',
+    subvoice: 'Chatterbox-Multilingual.hi-IN.Male',
+    sampleText: 'சாட்டர்பாக்ஸ் பன்மொழி குரல் அமைப்புக்கு உங்களை வரவேற்கிறோம். தெளிவான மற்றும் இயற்கையான இலங்கை தமிழ் குரல்.',
+    description: 'Sri Lankan Tamil with clear articulation and natural cadence.',
+    region: 'South Asia',
+  },
+  {
     code: 'hi-IN',
     name: 'Hindi (India)',
     nativeName: 'हिन्दी',
@@ -253,5 +273,10 @@ export const PRESET_CATEGORIES = [
     id: 'commercial',
     name: 'Commercial & Advertising',
     text: 'Experience the future of studio-grade sound. Precision, power, and elegance packed into one seamless design. Available everywhere today.',
+  },
+  {
+    id: 'sinhala-welcome',
+    name: '🇱🇰 Sinhala Greeting (ආයුබෝවන්)',
+    text: 'ආයුබෝවන්! ශ්‍රී ලංකාවේ සිංහල භාෂාවෙන් උසස් තත්ත්වයේ ස්වභාවික කටහඬ නිර්මාණය කිරීමට දැන් ඔබට හැකියාව ඇත.',
   },
 ];

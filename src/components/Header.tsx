@@ -1,12 +1,14 @@
 import React from 'react';
 import { Key, ExternalLink, Volume2, Cpu } from 'lucide-react';
+import { SUPPORTED_LANGUAGES } from '../data/languages';
 
 interface HeaderProps {
   onOpenApiKeyModal: () => void;
   isGenerating: boolean;
+  apiStatus?: 'connected' | 'checking' | 'error';
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenApiKeyModal, isGenerating }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenApiKeyModal, isGenerating, apiStatus = 'connected' }) => {
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur-md sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -26,7 +28,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenApiKeyModal, isGenerating 
               </span>
             </div>
             <p className="text-xs text-slate-400 hidden sm:block">
-              500M T3 + S3Gen Diffusion Decoder · 23 Languages · 24kHz Studio Audio
+              500M T3 + S3Gen Diffusion Decoder · {SUPPORTED_LANGUAGES.length} Languages (incl. 🇱🇰 Sinhala) · 24kHz Studio Audio
             </p>
           </div>
         </div>
@@ -34,19 +36,39 @@ export const Header: React.FC<HeaderProps> = ({ onOpenApiKeyModal, isGenerating 
         {/* Right Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Status Indicator */}
-          <div className="flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100 text-xs font-medium">
+          <div
+            className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs font-medium ${
+              isGenerating
+                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                : apiStatus === 'connected'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                : apiStatus === 'checking'
+                ? 'bg-amber-50 text-amber-700 border-amber-100'
+                : 'bg-rose-50 text-rose-700 border-rose-100'
+            }`}
+          >
             <span className="relative flex h-2 w-2">
               {isGenerating ? (
                 <>
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
                 </>
-              ) : (
+              ) : apiStatus === 'connected' ? (
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              ) : apiStatus === 'checking' ? (
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500 animate-pulse"></span>
+              ) : (
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
               )}
             </span>
             <span className="hidden md:inline">
-              {isGenerating ? 'Synthesizing...' : 'API Connected'}
+              {isGenerating
+                ? 'Synthesizing...'
+                : apiStatus === 'connected'
+                ? 'API Connected'
+                : apiStatus === 'checking'
+                ? 'Connecting API...'
+                : 'API Unavailable'}
             </span>
           </div>
 
