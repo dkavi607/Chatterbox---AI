@@ -1,0 +1,6 @@
+{
+  "name": "Chatterbox Multilingual Voice Generator",
+  "description": "Full-featured multilingual text-to-speech and voice generator powered by Resemble AI Chatterbox on NVIDIA NIM.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

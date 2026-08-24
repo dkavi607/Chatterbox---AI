@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package nvidia.riva.tts;
+
+import "riva_audio.proto";
+
+message ZeroShotData {
+  bytes audio_prompt = 1;
+  int32 sample_rate_hz = 2;
+  nvidia.riva.audio.AudioEncoding encoding = 3;
+  int32 audio_prompt_sample_rate_hz = 4;
+  nvidia.riva.audio.AudioEncoding audio_prompt_encoding = 5;
+  int32 bit_depth = 6;
+  int32 audio_prompt_bit_depth = 7;
+}
+
+message SynthesizeSpeechRequest {
+  string text = 1;
+  string language_code = 2;
+  nvidia.riva.audio.AudioEncoding encoding = 3;
+  int32 sample_rate_hz = 4;
+  string voice_name = 5;
+  string id = 6;
+  ZeroShotData zero_shot_data = 7;
+  map<string, string> custom_configuration = 8;
+}
+
+message SynthesizeSpeechResponseMetadata {
+  string text = 1;
+  string processed_text = 2;
+  repeated float predicted_durations = 3;
+  repeated string d_tokens = 4;
+  repeated float kld = 5;
+  repeated string p_tokens = 6;
+}
+
+message SynthesizeSpeechResponse {
+  bytes audio = 1;
+  SynthesizeSpeechResponseMetadata meta = 2;
+  string id = 3;
+}
+
+message RivaSynthesisConfigRequest {
+  string model_name = 1;
+}
+
+message RivaSynthesisConfigResponse {
+  message ModelConfig {
+    string model_name = 1;
+    repeated string parameters = 2;
+  }
+  repeated ModelConfig model_configs = 1;
+}
+
+service RivaSpeechSynthesis {
+  rpc Synthesize(SynthesizeSpeechRequest) returns (SynthesizeSpeechResponse);
+  rpc SynthesizeOnline(SynthesizeSpeechRequest) returns (stream SynthesizeSpeechResponse);
+  rpc GetRivaSynthesisConfig(RivaSynthesisConfigRequest) returns (RivaSynthesisConfigResponse);
+}
