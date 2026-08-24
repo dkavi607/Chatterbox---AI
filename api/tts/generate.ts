@@ -103,8 +103,29 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     console.error('Error generating speech in Vercel function:', error);
+    let errorMsg = 'An error occurred while synthesizing speech.';
+    if (typeof error === 'string') {
+      errorMsg = error;
+    } else if (error && typeof error.message === 'string' && error.message !== '[object Object]') {
+      errorMsg = error.message;
+    } else if (error && typeof error.details === 'string') {
+      errorMsg = error.details;
+    } else if (error) {
+      try {
+        const str = JSON.stringify(error);
+        errorMsg = str === '{}' ? String(error) : str;
+      } catch {
+        errorMsg = String(error);
+      }
+    }
+
+    if (errorMsg.includes('16 UNAUTHENTICATED') || errorMsg.includes('Invalid API key') || errorMsg.includes('unauthorized')) {
+      errorMsg = 'NVIDIA API Key is invalid or expired. Please click the Key icon in the top-right header to configure your NVIDIA NIM API Key.';
+    }
+
     return res.status(500).json({
-      error: error.message || 'An error occurred while synthesizing speech.',
+      success: false,
+      error: errorMsg,
     });
   }
 }

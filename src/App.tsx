@@ -126,10 +126,27 @@ export default function App() {
         throw new Error(`Server returned status ${response.status}: ${rawText.slice(0, 120)}`);
       }
 
-      const data = await response.json();
+      let data: any = {};
+      try {
+        data = await response.json();
+      } catch (parseErr) {
+        throw new Error(`Invalid response received from server (HTTP ${response.status})`);
+      }
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Speech synthesis failed. Please try again.');
+        let errText = 'Speech synthesis failed. Please try again.';
+        if (data.error) {
+          if (typeof data.error === 'string') {
+            errText = data.error;
+          } else if (typeof data.error === 'object') {
+            errText = data.error.message || data.error.details || data.error.error || JSON.stringify(data.error);
+          }
+        } else if (data.message) {
+          errText = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+        } else if (data.details) {
+          errText = typeof data.details === 'string' ? data.details : JSON.stringify(data.details);
+        }
+        throw new Error(errText);
       }
 
       setApiStatus('connected');
@@ -156,7 +173,28 @@ export default function App() {
       saveHistoryToStorage(updatedHistory);
     } catch (err: any) {
       console.error('Synthesis error:', err);
-      setErrorMsg(err.message || 'Network error while contacting TTS server.');
+      let msg = 'Network error while contacting TTS server.';
+      if (typeof err === 'string') {
+        msg = err;
+      } else if (err && typeof err.message === 'string' && err.message !== '[object Object]') {
+        msg = err.message;
+      } else if (err && typeof err.error === 'string') {
+        msg = err.error;
+      } else if (err && typeof err.details === 'string') {
+        msg = err.details;
+      } else if (err) {
+        try {
+          const str = JSON.stringify(err);
+          msg = str === '{}' ? String(err) : str;
+        } catch {
+          msg = String(err);
+        }
+      }
+
+      if (msg === '[object Object]' || !msg) {
+        msg = 'Speech synthesis error: please verify your NVIDIA API Key or network connection.';
+      }
+      setErrorMsg(msg);
     } finally {
       setIsGenerating(false);
     }
@@ -226,17 +264,30 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Error Banner */}
         {errorMsg && (
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between shadow-xs">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
-              <span>{errorMsg}</span>
+          <div className="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+              <span className="font-medium leading-relaxed">{errorMsg}</span>
             </div>
-            <button
-              onClick={() => setErrorMsg(null)}
-              className="text-rose-600 hover:text-rose-900 font-semibold ml-4"
-            >
-              Dismiss
-            </button>
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+              {(errorMsg.toLowerCase().includes('api key') ||
+                errorMsg.toLowerCase().includes('unauthenticated') ||
+                errorMsg.toLowerCase().includes('unauthorized') ||
+                errorMsg.toLowerCase().includes('nvapi')) && (
+                <button
+                  onClick={() => setIsApiKeyModalOpen(true)}
+                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-semibold transition-colors shadow-2xs"
+                >
+                  Configure API Key
+                </button>
+              )}
+              <button
+                onClick={() => setErrorMsg(null)}
+                className="text-rose-600 hover:text-rose-900 font-semibold px-2 py-1"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 
